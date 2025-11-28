@@ -13,9 +13,14 @@ export async function showOpenDialogue(request: ShowOpenDialogueRequest): Promis
 	}
 
 	if (request.filters?.files) {
-		options.filters = {
-			Files: request.filters.files,
-		}
+		const extensions = request.filters.files
+		const hasImageExtensions = extensions.some((ext: string) =>
+			["png", "jpg", "jpeg", "gif", "webp"].includes(ext.toLowerCase())
+		)
+
+		options.filters = {}
+		options.filters[hasImageExtensions ? "Files & Images" : "Files"] = extensions
+		options.filters["All Files"] = ["*"]
 	}
 
 	const selectedResources = await vscode.window.showOpenDialog(options)
