@@ -406,6 +406,39 @@ describe("TerminalProcess (Integration Tests)", () => {
 			;(emitSpy as sinon.SinonSpy).calledWith("line", "> tsc").should.be.true()
 			;(emitSpy as sinon.SinonSpy).calledWith("line", "files built successfully").should.be.true()
 		})
+
+		it("should emit a message when command produces no output", async () => {
+			// Create a terminal
+			const terminal = TerminalRegistry.createTerminal().terminal
+			createdTerminals.push(terminal)
+
+			// Mock the shell integration with an empty stream (no output)
+			const mockExecuteCommand = sandbox.stub().returns({
+				read: () => createMockStream([]), // Empty output
+			})
+
+			// Create a mock shell integration object and stub the getter
+			sandbox.stub(terminal, "shellIntegration").get(() => ({
+				executeCommand: mockExecuteCommand,
+			}))
+
+			// Mock getLatestTerminalOutput to return empty (simulating no terminal content)
+			const getLatestTerminalOutputModule = await import("@/hosts/vscode/terminal/get-latest-output")
+			const getLatestOutputStub = sandbox.stub(getLatestTerminalOutputModule, "getLatestTerminalOutput").resolves("")
+
+			const emitSpy = sandbox.spy(process, "emit")
+
+			await process.run(terminal, "true") // 'true' command produces no output
+
+			// Verify that the fallback was attempted
+			getLatestOutputStub.called.should.be.true()
+
+			// Verify that we emit a clear message about no output
+			;(emitSpy as sinon.SinonSpy)
+				.calledWith("line", "The command executed successfully but produced no output.")
+				.should.be.true()
+			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.true()
+		})
 	})
 
 	// The following tests are shared with the unit tests to ensure consistent behavior
