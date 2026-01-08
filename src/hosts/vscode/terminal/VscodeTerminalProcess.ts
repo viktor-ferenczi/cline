@@ -38,16 +38,19 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 	private hotTimer: NodeJS.Timeout | null = null
 
 	async run(terminal: vscode.Terminal, command: string) {
-		// When command does not produce any output, we can assume the shell integration API failed and as a fallback return the current terminal contents
+		// When shell integration fails to capture output, try to get terminal contents as fallback
 		const returnCurrentTerminalContents = async () => {
 			try {
 				const terminalSnapshot = await getLatestTerminalOutput()
 				if (terminalSnapshot && terminalSnapshot.trim()) {
 					const fallbackMessage = `The command's output could not be captured due to some technical issue, however it has been executed successfully. Here's the current terminal's content to help you get the command's output:\n\n${terminalSnapshot}`
 					this.emit("line", fallbackMessage)
+					return true // Fallback worked, found output in terminal
 				}
+				return false // No output in terminal either
 			} catch (error) {
 				console.error("Error capturing terminal output:", error)
+				return false
 			}
 		}
 
@@ -197,13 +200,14 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 			if (!this.fullOutput.trim()) {
 				// No output captured via shell integration, trying fallback
 				telemetryService.captureTerminalOutputFailure(TerminalOutputFailureReason.TIMEOUT, "vscode")
-				await returnCurrentTerminalContents()
-				// Check if fallback worked
-				const terminalSnapshot = await getLatestTerminalOutput()
-				if (terminalSnapshot && terminalSnapshot.trim()) {
+				const fallbackWorked = await returnCurrentTerminalContents()
+				if (fallbackWorked) {
+					// Fallback found output in terminal that shell integration missed
 					telemetryService.captureTerminalExecution(true, "vscode", "clipboard")
 				} else {
+					// Neither shell integration nor fallback found output - command produced no output
 					telemetryService.captureTerminalExecution(false, "vscode", "none")
+					this.emit("line", "The command executed successfully but produced no output.")
 				}
 			} else {
 				// Shell integration worked
@@ -228,13 +232,14 @@ export class VscodeTerminalProcess extends EventEmitter<TerminalProcessEvents> i
 			await new Promise((resolve) => setTimeout(resolve, 3000))
 
 			// For terminals without shell integration, also try to capture terminal content
-			await returnCurrentTerminalContents()
-			// Check if clipboard fallback worked
-			const terminalSnapshot = await getLatestTerminalOutput()
-			if (terminalSnapshot && terminalSnapshot.trim()) {
+			const fallbackWorked = await returnCurrentTerminalContents()
+			if (fallbackWorked) {
+				// Fallback found output in terminal
 				telemetryService.captureTerminalExecution(true, "vscode", "clipboard")
 			} else {
+				// No output captured - command produced no output
 				telemetryService.captureTerminalExecution(false, "vscode", "none")
+				this.emit("line", "The command executed successfully but produced no output.")
 			}
 			// For terminals without shell integration, we can't know when the command completes
 			// So we'll just emit the continue event after a delay
