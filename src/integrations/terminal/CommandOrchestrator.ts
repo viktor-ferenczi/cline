@@ -155,7 +155,7 @@ export async function orchestrateCommandExecution(
 						// This prevents the orchestrator's listener from processing new lines
 						const result = terminalManager.processOutput(outputLines)
 						const logMsg = trackingResult?.logFilePath ? `Log file: ${trackingResult.logFilePath}\n` : ""
-						const outputMsg = result.length > 0 ? `Output so far:\n${result}` : ""
+						const outputMsg = result.length > 0 ? `Output so far:\n${result}` : "No output produced so far."
 
 						backgroundTrackingResult = {
 							userRejected: false,
@@ -422,7 +422,7 @@ export async function orchestrateCommandExecution(
 						// This prevents the orchestrator's listener from processing new lines
 						const result = terminalManager.processOutput(outputLines)
 						const logMsg = trackingResult?.logFilePath ? `Log file: ${trackingResult.logFilePath}\n` : ""
-						const outputMsg = result.length > 0 ? `Output so far:\n${result}` : ""
+						const outputMsg = result.length > 0 ? `Output so far:\n${result}` : "No output produced before timeout."
 
 						backgroundTrackingResult = {
 							userRejected: false,
@@ -456,7 +456,7 @@ export async function orchestrateCommandExecution(
 
 					return {
 						userRejected: false,
-						result: `Command execution timed out after ${timeoutSeconds} seconds. ${result.length > 0 ? `\nOutput so far:\n${result}` : ""}`,
+						result: `Command execution timed out after ${timeoutSeconds} seconds. ${result.length > 0 ? `\nOutput so far:\n${result}` : "\nNo output produced before timeout."}`,
 						completed: false,
 						outputLines,
 					}
@@ -510,7 +510,7 @@ export async function orchestrateCommandExecution(
 		return {
 			userRejected: true,
 			result: formatResponse.toolResult(
-				`Command cancelled. ${result.length > 0 ? `\nOutput captured before cancellation:\n${result}` : ""}`,
+				`Command cancelled. ${result.length > 0 ? `\nOutput captured before cancellation:\n${result}` : "\nThe command produced no output before cancellation."}`,
 			),
 			completed: false,
 			outputLines: resultOutputLines,
@@ -530,7 +530,7 @@ export async function orchestrateCommandExecution(
 			userRejected: true,
 			result: formatResponse.toolResult(
 				`Command is still running in the user's terminal.${
-					result.length > 0 ? `\nHere's the output so far:\n${result}` : ""
+					result.length > 0 ? `\nHere's the output so far:\n${result}` : "\nThe command has produced no output so far."
 				}\n\nThe user provided the following feedback:\n<feedback>\n${userFeedback.text}\n</feedback>`,
 				userFeedback.images,
 				fileContentString,
@@ -545,7 +545,7 @@ export async function orchestrateCommandExecution(
 		const logFileMsg = largeOutputLogPath ? `\nFull output saved to: ${largeOutputLogPath}` : ""
 		return {
 			userRejected: false,
-			result: `Command executed.${result.length > 0 ? `\nOutput:\n${result}` : ""}${logFileMsg}`,
+			result: `Command executed.${result.length > 0 ? `\nOutput:\n${result}` : "\nThe command produced no output."}${logFileMsg}`,
 			completed: true,
 			outputLines: resultOutputLines,
 			logFilePath: largeOutputLogPath || undefined,
@@ -555,7 +555,7 @@ export async function orchestrateCommandExecution(
 		return {
 			userRejected: false,
 			result: `Command is still running in the user's terminal.${
-				result.length > 0 ? `\nHere's the output so far:\n${result}` : ""
+				result.length > 0 ? `\nHere's the output so far:\n${result}` : "\nThe command has produced no output so far."
 			}${logFileMsg}\n\nYou will be updated on the terminal status and new output in the future.`,
 			completed: false,
 			outputLines: resultOutputLines,
